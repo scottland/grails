@@ -292,7 +292,7 @@
     </target>
 
     <target name="maven-deploy"
-            depends="test,jar,-mavenDeployInit"
+            depends="jar,-mavenDeployInit"
             description="Installs the Grails artifacts in the appropriate remote Codehaus repository.">
         <mavenDeploy version="${grails.version}" prefix="grails"/>
         <mavenDeploy version="${grails.version}" prefix="grails-bootstrap"/>
@@ -307,29 +307,4 @@
         <mavenDeploy version="${grails.version}" prefix="grails-web"/>
         <mavenDeploy version="${grails.version}" prefix="grails-webflow"/>
     </target>
-
-    <target name="osgi-jars" depends="jar,-mavenInit">
-        <taskdef resource="aQute/bnd/ant/taskdef.properties">
-            <classpath>
-                <fileset dir="${basedir}/ant/lib" includes="bnd-*.jar"/>
-            </classpath>
-        </taskdef>
-        <maven.dependencies pomrefid="grails-bootstrap.pom" pathid="bootstrap.deps.path" usescope="runtime"/>
-        <delete dir="${grails.dist}/osgi"/>
-        <mkdir dir="${grails.dist}/osgi"/>
-        <pathconvert property="grails.bootstrap.path" refid="bootstrap.deps.path"/>
-        <bndwrap definitions="${basedir}/maven" output="${grails.dist}/osgi"
-                 failok="true" classpath="${grails.bootstrap.path}">
-            <fileset dir="${targetDistDirectory}" includes="grails-bootstrap-*.jar"/>
-        </bndwrap>
-        <!--
-        <delete dir="${targetDistDirectory}" includes="${jarsToWrap}"/>
-        <move todir="${targetDistDirectory}">
-            <fileset dir="${targetDistDirectory}" includes="groovy*.bar"/>
-            <globmapper from="groovy*.bar" to="groovy*-${groovyVersion}.jar"/>
-        </move>
-        <delete dir="${targetDistDirectory}" includes="groovy*.bnd"/>
-        -->
-    </target>
-
 </project>

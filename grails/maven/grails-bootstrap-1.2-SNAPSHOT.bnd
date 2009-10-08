@@ -1,0 +1,10 @@
+-classpath: ../dist/grails-bootstrap-1.2-SNAPSHOT.jar, \
+    ../lib/groovy-all-1.6.4.jar, \
+    ../lib/gant-groovy1.6-1.6.0.jar
+
+Import-Package: org.apache.tools.ant.*;resolution:=optional, \
+    org.codehaus.groovy.grails.cli.*, \
+    groovy.*,org.codehaus.groovy.*, \
+    gant.*;version=1.6.0, org.codehaus.gant.*;version=1.6.0
+Private-Package: *
+Export-Package: grails.ant.*,org.codehaus.groovy.grails.cli.support.*,grails.util.*

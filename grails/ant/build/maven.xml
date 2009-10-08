@@ -20,10 +20,10 @@ $Date: 2008-04-22 05:04:01 -0500 (Tue, 22 Apr 2008) $
 
     <macrodef name="maven.dependencies">
         <attribute name="useScope"/>
-        <attribute name="filesetId"/>
+        <attribute name="pathId"/>
         <attribute name="pomRefId"/>
         <sequential>
-            <artifact:dependencies useScope="@{useScope}" filesetId="@{filesetId}">
+            <artifact:dependencies useScope="@{useScope}" pathId="@{pathId}">
                 <remoteRepository refid="ibiblio.remote.repository"/>
                 <remoteRepository refid="repo1.remote.repository"/>
                 <pom refid="@{pomRefId}"/>
