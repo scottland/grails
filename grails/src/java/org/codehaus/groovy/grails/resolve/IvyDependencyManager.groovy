@@ -123,6 +123,7 @@ public class IvyDependencyManager implements DependencyResolver, DependencyDefin
     
     boolean readPom = false
     boolean inheritsAll = false
+    boolean resolveErrors = false
 
 
     /**
@@ -220,8 +221,8 @@ public class IvyDependencyManager implements DependencyResolver, DependencyDefin
             // log level of Ivy resolver, either 'error', 'warn', 'info', 'debug' or 'verbose'
             log "warn"
             repositories {
+                grailsPlugins()
                 grailsHome()
-
                 // uncomment the below to enable remote dependency resolution
                 // from public Maven repositories
                 //mavenCentral()
@@ -251,7 +252,7 @@ public class IvyDependencyManager implements DependencyResolver, DependencyDefin
                        "org.grails:grails-web:$grailsVersion",
                        "org.slf4j:slf4j-api:1.5.8",
                        "org.slf4j:slf4j-log4j12:1.5.8",
-                       "org.springframework:org.springframework.test:3.0.0.RC2"
+                       "org.springframework:org.springframework.test:3.0.0.RC3"
 
                 // dependencies needed during development, but not for deployment
                 provided "javax.servlet:servlet-api:2.5",
@@ -259,7 +260,7 @@ public class IvyDependencyManager implements DependencyResolver, DependencyDefin
                          "javax.servlet:jstl:1.1.2"
 
                 // dependencies needed for compilation
-                compile("org.codehaus.groovy:groovy-all:1.6.5") {
+                compile("org.codehaus.groovy:groovy-all:1.6.7") {
                     excludes 'jline'
                 }
 
@@ -283,22 +284,22 @@ public class IvyDependencyManager implements DependencyResolver, DependencyDefin
                          "org.grails:grails-resources:$grailsVersion",
                          "org.grails:grails-spring:$grailsVersion",
                          "org.grails:grails-web:$grailsVersion",
-                         "org.springframework:org.springframework.core:3.0.0.RC2",
-                         "org.springframework:org.springframework.aop:3.0.0.RC2",
-                         "org.springframework:org.springframework.aspects:3.0.0.RC2",
-                         "org.springframework:org.springframework.asm:3.0.0.RC2",
-                         "org.springframework:org.springframework.beans:3.0.0.RC2",
-                         "org.springframework:org.springframework.context:3.0.0.RC2",
-                         "org.springframework:org.springframework.context.support:3.0.0.RC2",
-                         "org.springframework:org.springframework.expression:3.0.0.RC2",
-                         "org.springframework:org.springframework.instrument:3.0.0.RC2",
-                         "org.springframework:org.springframework.jdbc:3.0.0.RC2",
-                         "org.springframework:org.springframework.jms:3.0.0.RC2",
-                         "org.springframework:org.springframework.orm:3.0.0.RC2",
-                         "org.springframework:org.springframework.oxm:3.0.0.RC2",
-                         "org.springframework:org.springframework.transaction:3.0.0.RC2",
-                         "org.springframework:org.springframework.web:3.0.0.RC2",
-                         "org.springframework:org.springframework.web.servlet:3.0.0.RC2",
+                         "org.springframework:org.springframework.core:3.0.0.RC3",
+                         "org.springframework:org.springframework.aop:3.0.0.RC3",
+                         "org.springframework:org.springframework.aspects:3.0.0.RC3",
+                         "org.springframework:org.springframework.asm:3.0.0.RC3",
+                         "org.springframework:org.springframework.beans:3.0.0.RC3",
+                         "org.springframework:org.springframework.context:3.0.0.RC3",
+                         "org.springframework:org.springframework.context.support:3.0.0.RC3",
+                         "org.springframework:org.springframework.expression:3.0.0.RC3",
+                         "org.springframework:org.springframework.instrument:3.0.0.RC3",
+                         "org.springframework:org.springframework.jdbc:3.0.0.RC3",
+                         "org.springframework:org.springframework.jms:3.0.0.RC3",
+                         "org.springframework:org.springframework.orm:3.0.0.RC3",
+                         "org.springframework:org.springframework.oxm:3.0.0.RC3",
+                         "org.springframework:org.springframework.transaction:3.0.0.RC3",
+                         "org.springframework:org.springframework.web:3.0.0.RC3",
+                         "org.springframework:org.springframework.web.servlet:3.0.0.RC3",
                          "org.slf4j:slf4j-api:1.5.8") {
                         transitive = false
                 }
@@ -307,7 +308,7 @@ public class IvyDependencyManager implements DependencyResolver, DependencyDefin
                 // dependencies needed for running tests
                 test "junit:junit:3.8.2",
                      "org.grails:grails-test:$grailsVersion",
-                     "org.springframework:org.springframework.test:3.0.0.RC2"
+                     "org.springframework:org.springframework.test:3.0.0.RC3"
 
                 // dependencies needed at runtime only
                 runtime "org.aspectj:aspectjweaver:1.6.6",
@@ -322,7 +323,7 @@ public class IvyDependencyManager implements DependencyResolver, DependencyDefin
                         "hsqldb:hsqldb:1.8.0.10"
 
                 // caching
-                runtime ("net.sf.ehcache:ehcache-core:1.7.0") {
+                runtime ("net.sf.ehcache:ehcache-core:1.7.1") {
                     excludes 'jms', 'commons-logging', 'servlet-api'
                 }
 
@@ -440,21 +441,25 @@ public class IvyDependencyManager implements DependencyResolver, DependencyDefin
             usedConfigurations << scope
         }
 
-        def mappings = configurationMappings[scope]
-        mappings?.each {
-            dependencyDescriptor.addDependencyConfiguration scope, it
-        }
+        
 
         if (dependencyConfigurer) {
             dependencyConfigurer.resolveStrategy = Closure.DELEGATE_ONLY
             dependencyConfigurer.setDelegate(dependencyDescriptor)
             dependencyConfigurer.call()
         }
+        if (dependencyDescriptor.getModuleConfigurations().length == 0){
+		      def mappings = configurationMappings[scope]
+		      mappings?.each {
+		          dependencyDescriptor.addDependencyConfiguration scope, it
+		      }
+        }
         if(!dependencyDescriptor.inherited) {
             hasApplicationDependencies = true
         }
         dependencyDescriptors << dependencyDescriptor
-        moduleDescriptor.addDependency dependencyDescriptor
+        if(dependencyDescriptor.isExportedToApplication())
+            moduleDescriptor.addDependency dependencyDescriptor
     }
 
 
@@ -518,13 +523,16 @@ public class IvyDependencyManager implements DependencyResolver, DependencyDefin
      * potentially going out to the internet to download jars if they are not found locally
      */
     public ResolveReport resolveDependencies(String conf) {
+        resolveErrors = false
         if(usedConfigurations.contains(conf) || conf == '') {
             def options = new ResolveOptions(checkIfChanged:false, outputReport:true, validate:false)
             if(conf)
                 options.confs = [conf] as String[]
 
 
-            return resolveEngine.resolve(moduleDescriptor,options)
+            ResolveReport resolve = resolveEngine.resolve(moduleDescriptor, options)
+            resolveErrors = resolve.hasError()
+            return resolve
         }
         else {
             // return an empty resolve report
@@ -767,7 +775,9 @@ class IvyDomainSpecificLanguageEvaluator {
 
             repositoryData << ['type':'flatDir', name:name, dirs:dirs.join(',')]
             dirs.each { dir ->
-               fileSystemResolver.addArtifactPattern "${new File(dir?.toString()).absolutePath}/[artifact]-[revision].[ext]"
+               def path = new File(dir?.toString()).absolutePath
+               fileSystemResolver.addIvyPattern( "${path}/[module]-[revision](-[classifier]).xml")                
+               fileSystemResolver.addArtifactPattern "${path}/[module]-[revision](-[classifier]).[ext]"
             }
             fileSystemResolver.settings = ivySettings
 
@@ -779,9 +789,11 @@ class IvyDomainSpecificLanguageEvaluator {
     void grailsPlugins() {
         if(isResolverNotAlreadyDefined('grailsPlugins')) {            
            repositoryData << ['type':'grailsPlugins', name:"grailsPlugins"]
-           def pluginResolver = new GrailsPluginsDirectoryResolver(buildSettings, ivySettings)
+           if(buildSettings!=null) {               
+               def pluginResolver = new GrailsPluginsDirectoryResolver(buildSettings, ivySettings)
 
-           chainResolver.add pluginResolver
+               chainResolver.add pluginResolver
+           }
         }
 
     }
@@ -827,6 +839,24 @@ class IvyDomainSpecificLanguageEvaluator {
         if(resolver) {
             chainResolver.add resolver
         }        
+    }
+
+    void ebr() {
+        if(isResolverNotAlreadyDefined('ebr')) {
+            repositoryData << ['type':'ebr']
+            IBiblioResolver ebrReleaseResolver = new IBiblioResolver(name:"ebrRelease",
+                                                                     root:"http://repository.springsource.com/maven/bundles/release",
+                                                                     m2compatible:true,
+                                                                     settings:ivySettings)
+            chainResolver.add ebrReleaseResolver
+
+            IBiblioResolver ebrExternalResolver = new IBiblioResolver(name:"ebrExternal",
+                                                                      root:"http://repository.springsource.com/maven/bundles/external",
+                                                                      m2compatible:true,
+                                                                      settings:ivySettings)
+
+            chainResolver.add ebrExternalResolver
+        }
     }
 
     void mavenCentral() {

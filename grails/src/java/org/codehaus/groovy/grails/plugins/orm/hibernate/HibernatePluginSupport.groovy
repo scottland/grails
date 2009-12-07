@@ -75,6 +75,7 @@ import org.codehaus.groovy.grails.orm.hibernate.support.FlushOnRedirectEventList
 import org.codehaus.groovy.grails.orm.hibernate.cfg.HibernateNamedQueriesBuilder
 import org.codehaus.groovy.grails.exceptions.GrailsDomainException
 import org.codehaus.groovy.grails.commons.GrailsDomainClassProperty
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Used by HibernateGrailsPlugin to implement the core parts of GORM
@@ -154,9 +155,9 @@ public class HibernatePluginSupport {
                     try {
                         def cacheClass = getClass().classLoader.loadClass(cacheProvider)
                     } catch (Throwable t) {
-                        hibConfig.remove('cache')
+                        hibConfig.cache.provider_class='net.sf.ehcache.hibernate.EhCacheProvider'
                         log.error """WARNING: Your cache provider is set to '${cacheProvider}' in DataSource.groovy, however the classes for this provider cannot be found.
-Try using Grails' default cache provider: 'net.sf.ehcache.hibernate.EhCacheProvider'"""
+Using Grails' default cache provider: 'net.sf.ehcache.hibernate.EhCacheProvider'"""
                     }
                 }
                 hibProps.putAll(hibConfig.flatten().toProperties('hibernate'))
@@ -176,9 +177,20 @@ Try using Grails' default cache provider: 'net.sf.ehcache.hibernate.EhCacheProvi
             entityInterceptor(EmptyInterceptor)
             sessionFactory(ConfigurableLocalSessionFactoryBean) {
                 dataSource = dataSource
+				List hibConfigLocations = []
                 if (application.classLoader.getResource("hibernate.cfg.xml")) {
-                    configLocation = "classpath:hibernate.cfg.xml"
+					hibConfigLocations << "classpath:hibernate.cfg.xml"
                 }
+				def explicitLocations = hibConfig?.config?.location
+				if(explicitLocations) {
+					if(explicitLocations instanceof Collection) {
+						hibConfigLocations.addAll(explicitLocations.collect { it.toString() })
+					}
+					else {
+						hibConfigLocations << hibConfig.config.location.toString()
+					}					 
+				}
+				configLocations = hibConfigLocations
                 if (hibConfigClass) {
                     configClass = ds.configClass
                 }
@@ -325,10 +337,12 @@ Try using Grails' default cache provider: 'net.sf.ehcache.hibernate.EhCacheProvi
    	 	proxy.metaClass = emc
     }
 
-    private static DOMAIN_INITIALIZERS = [:]
+    private static DOMAIN_INITIALIZERS = new ConcurrentHashMap()
     static initializeDomain(Class c) {
-    	 // enhance domain class only once, initializer is removed after calling
-         DOMAIN_INITIALIZERS.remove(c)?.call()
+        synchronized(c) {            
+             // enhance domain class only once, initializer is removed after calling
+             DOMAIN_INITIALIZERS.remove(c)?.call()
+        }
     }
     
     static enhanceSessionFactory(SessionFactory sessionFactory, GrailsApplication application, ApplicationContext ctx) {
@@ -861,7 +875,8 @@ Try using Grails' default cache provider: 'net.sf.ehcache.hibernate.EhCacheProvi
             template.execute({Session session ->
                 def criteria = session.createCriteria(dc.clazz)
                 criteria.setProjection(Projections.rowCount())
-                criteria.uniqueResult()
+                def num = criteria.uniqueResult()
+                num == null ? 0 : num
             } as HibernateCallback)
         }
     }

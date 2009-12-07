@@ -20,6 +20,7 @@ import org.codehaus.groovy.grails.test.GrailsTestType
 import org.codehaus.groovy.grails.test.GrailsTestTypeResult
 import org.codehaus.groovy.grails.test.GrailsTestTargetPattern
 import org.codehaus.groovy.grails.test.event.GrailsTestEventPublisher
+import org.codehaus.groovy.grails.test.io.SystemOutAndErrSwapper
 
 import org.springframework.core.io.Resource
 
@@ -168,7 +169,7 @@ abstract class GrailsTestTypeSupport implements GrailsTestType {
         testSuffixes.each { suffix ->
             testExtensions.each { extension ->
                 def resources = resolveResources("file:${sourceDir.absolutePath}/${targetPattern.filePattern}${suffix}.${extension}".toString())
-                allResources.addAll(resources.toList())
+                allResources.addAll(resources.findAll { it.file.exists() }.toList())
             }
         }
         allResources
@@ -188,5 +189,21 @@ abstract class GrailsTestTypeSupport implements GrailsTestType {
         def relativePath = filePath.substring(basePath.size() + 1)
         def suffixPos = relativePath.lastIndexOf(".")
         relativePath[0..(suffixPos - 1)].replace(File.separatorChar, '.' as char)
+    }
+    
+    /**
+     * Convenience method for obtaining the class file for a test class
+     */
+    protected File getClassFileForTestClass(Class clazz) {
+      new File(compiledClassesDir, clazz.name.replace(".", "/") + ".class")
+    }
+    
+    /**
+     * Creates swapper with echo parameters based on testOptions.echoOut and testOptions.echoErr in the build binding.
+     */
+    protected SystemOutAndErrSwapper createSystemOutAndErrSwapper() {
+        buildBinding.with {
+            new SystemOutAndErrSwapper(testOptions.echoOut == true, testOptions.echoErr == true)
+        }
     }
 }

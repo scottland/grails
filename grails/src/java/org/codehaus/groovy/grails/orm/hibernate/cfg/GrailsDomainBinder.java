@@ -384,10 +384,21 @@ public final class GrailsDomainBinder {
         PropertyConfig propConfig = getPropertyConfig(property);
 
         if(propConfig != null && !StringUtils.isBlank(propConfig.getSort())) {
+            if(!property.isBidirectional() && property.isOneToMany()) {
+                String message = "WARNING: Sorting by a child property does " +
+                        "not work with unidirectional one to many relationships " +
+                        "due to http://opensource.atlassian.com/projects/hibernate/browse/HHH-4394";
+                LOG.warn(message);
+            }
             GrailsDomainClass referenced = property.getReferencedDomainClass();
             if(referenced != null) {
-                GrailsDomainClassProperty propertyToSortBy = referenced.getPropertyByName(propConfig.getSort());                
-                collection.setOrderBy(getColumnNameForPropertyAndPath(propertyToSortBy,"",null));
+                GrailsDomainClassProperty propertyToSortBy = referenced.getPropertyByName(propConfig.getSort());
+
+                String columnName = getColumnNameForPropertyAndPath(propertyToSortBy, "", null);
+                if(propConfig.getOrder() != null) {
+                    columnName += " " + propConfig.getOrder();
+                }
+                collection.setOrderBy(columnName);
             }
         }
 
@@ -1656,9 +1667,13 @@ public final class GrailsDomainBinder {
             try {
                 userType = Class.forName(typeName, true, Thread.currentThread().getContextClassLoader());
             } catch (ClassNotFoundException e) {
-            	if(LOG.isWarnEnabled()) {
-            		LOG.warn("UserType not found ", e);
-            	}
+                // only print a warning if the user type is in a package this excludes basic
+                // types like string, int etc.
+                if(typeName.indexOf(".")>-1) {
+                    if(LOG.isWarnEnabled()) {
+                        LOG.warn("UserType not found ", e);
+                    }
+                }
             }
         }
         return userType;

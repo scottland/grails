@@ -54,6 +54,14 @@ public class EnhancedDefaultDependencyDescriptor extends DefaultDependencyDescri
      */
     boolean exported = true
 
+    /**
+     * Whether the dependency should be exposed to the application
+     */
+    boolean isExportedToApplication() {
+        if(plugin && !exported) return false
+        return true
+    }
+
 
     EnhancedDefaultDependencyDescriptor(ModuleRevisionId mrid, boolean force, String scope) {
         super(mrid, force);
@@ -93,6 +101,10 @@ public class EnhancedDefaultDependencyDescriptor extends DefaultDependencyDescri
     private excludeForMap (Map args) {
         def mid = ModuleId.newInstance(args?.group ?: WILDCARD, args?.name ?: WILDCARD)
         addRuleForModuleId(mid, scope)
+    }
+    
+    void dependencyConfiguration(String config){
+    	addDependencyConfiguration(scope, config)
     }
 
     void setTransitive (boolean b) {

@@ -59,17 +59,16 @@
 
     </target>
 
-    <property name="bundlor.version" value="1.0.0.CI-230" />
-    <property name="bundlor.home" location="${grails.target}/bundlor-${bundlor.version}" />
-    <available file="${bundlor.home}" property="bundlor.installed" />
+    <property name="bundlor.version" value="1.0.0.CI-231" />
+    <property name="bundlor.home" location="${basedir}/target/bundlor-${bundlor.version}" />
 
-    
     <target name="--bundlor-jar" depends="bundlor.init" unless="disable.bundlor">
+
 		<bundlor:bundlor inputPath="${grails.dist}/grails-${bundle.name}-${grails.version}.jar"
                          outputPath="${grails.dist}/grails-${bundle.name}-${grails.version}.jar"
 				         bundleVersion="${grails.version}"
 				         manifestTemplatePath="${basedir}/maven/grails-${bundle.name}.mf"
-                         failOnWarnings="false">
+                         failOnWarnings="true">
             <propertyset>
                 <propertyref prefix="bundlor."/>
                 <mapper type="glob" from="bundlor.*" to="*" />
@@ -77,7 +76,14 @@
 		</bundlor:bundlor>
 	</target>
 
-	<target name="bundlor.init" depends="bundlor.download">
+	<target name="bundlor.init" unless="disable.bundlor">
+		<condition property="bundlor.installed">
+			<or>
+				<isset property="disable.bundlor" />
+				<available type="dir" file="${bundlor.home}"  />
+			</or>
+    	</condition>
+		<antcall target="bundlor.download" />
 		<taskdef resource="com/springsource/bundlor/ant/antlib.xml"
                  uri="antlib:com.springsource.bundlor.ant">
             <classpath id="bundlor.classpath">
@@ -154,9 +160,6 @@
             </fileset>
             <file file="${basedir}/build.properties"/>
         </jar>
-        <antcall target="--bundlor-jar">
-            <param name="bundle.name" value="bootstrap" />
-        </antcall>
         <jar destfile="${grails.dist}/grails-scripts-${grails.version}.jar" manifest="${grails.build}/META-INF/MANIFEST.MF">
             <fileset dir="${grails.target}/compiled-scripts"/>
             <file file="${basedir}/scripts/log4j.properties"/>            
@@ -281,8 +284,15 @@
                 <exclude name="**/groovy/grails/validation/Hibernate**" />
             </fileset>
         </jar>
+
+		<jar destfile="${grails.dist}/grails-osgi-${grails.version}.jar" manifest="${grails.build}/META-INF/MANIFEST.MF">
+			<fileset dir="${grails.dist}">
+				<include name="grails-bootstrap-${grails.version}.jar" />
+				<include name="grails-core-${grails.version}.jar" />
+			</fileset>
+		</jar>
         <antcall target="--bundlor-jar">
-            <param name="bundle.name" value="core" />
+            <param name="bundle.name" value="osgi" />
         </antcall>
 
     	<delete dir="${grails.build}/META-INF/services"></delete>

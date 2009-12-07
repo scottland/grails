@@ -18,6 +18,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.orm.hibernate3.SessionFactoryUtils
 import org.springframework.orm.hibernate3.SessionHolder
 import org.springframework.util.Log4jConfigurer
+import org.codehaus.groovy.grails.commons.AnnotationDomainClassArtefactHandler
 
 /**
  * @author Graeme Rocher
@@ -63,7 +64,7 @@ dataSource {
 hibernate {
     cache.use_second_level_cache=true
     cache.use_query_cache=true
-    cache.provider_class='com.opensymphony.oscache.hibernate.OSCacheProvider'
+    cache.provider_class='net.sf.ehcache.hibernate.EhCacheProvider'
 }
 ''', "DataSource")
 
@@ -72,6 +73,7 @@ hibernate {
         ga = new DefaultGrailsApplication(gcl.getLoadedClasses(), gcl);
         grailsApplication = ga
         mockManager = new MockGrailsPluginManager(ga)
+        
         ctx.registerMockBean("pluginManager", mockManager)
         PluginManagerHolder.setPluginManager(mockManager)
 
@@ -172,6 +174,7 @@ class MockHibernateGrailsPlugin {
                        core: version,
                        domainClass: version]
 
+      def artefacts = [new AnnotationDomainClassArtefactHandler()]
       def loadAfter = ['controllers']
       def doWithSpring = HibernatePluginSupport.doWithSpring
       def doWithDynamicMethods = HibernatePluginSupport.doWithDynamicMethods

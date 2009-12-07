@@ -20,13 +20,12 @@ import groovy.lang.MetaClassRegistry;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.codehaus.groovy.grails.commons.GrailsApplication;
-import org.codehaus.groovy.grails.orm.hibernate.cfg.GrailsAnnotationConfiguration;
 import org.codehaus.groovy.grails.orm.hibernate.cfg.GrailsDomainConfiguration;
+import org.codehaus.groovy.grails.orm.hibernate.cfg.DefaultGrailsDomainConfiguration;
 import org.hibernate.EntityMode;
 import org.hibernate.HibernateException;
 import org.hibernate.SessionFactory;
 import org.hibernate.cache.CacheException;
-import org.hibernate.cfg.AnnotationConfiguration;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.cfg.Environment;
 import org.hibernate.metadata.ClassMetadata;
@@ -36,10 +35,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.orm.hibernate3.LocalSessionFactoryBean;
 
-import javax.persistence.Entity;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Map;
 
 
@@ -56,7 +52,7 @@ public class ConfigurableLocalSessionFactoryBean extends
     private static final Log LOG = LogFactory.getLog(ConfigurableLocalSessionFactoryBean.class);
     private ClassLoader classLoader = null;
     private GrailsApplication grailsApplication;
-    private Class configClass = GrailsAnnotationConfiguration.class;
+    private Class configClass;
     private ApplicationContext applicationContext;
     private Class currentSessionContextClass;
 
@@ -102,6 +98,16 @@ public class ConfigurableLocalSessionFactoryBean extends
 	 * Overrides default behaviour to allow for a configurable configuration class 
 	 */
 	protected Configuration newConfiguration() {
+        ClassLoader cl = this.classLoader != null ? this.classLoader : Thread.currentThread().getContextClassLoader();
+        if(configClass == null) {
+            try {
+                configClass = cl.loadClass("org.codehaus.groovy.grails.orm.hibernate.cfg.GrailsAnnotationConfiguration");
+            }
+            catch (Throwable e) {
+                // probably not Java 5 or missing some annotation jars, use default
+                configClass = DefaultGrailsDomainConfiguration.class;                
+            }
+        }
         Object config = BeanUtils.instantiateClass(configClass);
         if(config instanceof GrailsDomainConfiguration) {
             GrailsDomainConfiguration grailsConfig = (GrailsDomainConfiguration) config;
@@ -122,16 +128,6 @@ public class ConfigurableLocalSessionFactoryBean extends
 
     protected SessionFactory newSessionFactory(Configuration config) throws HibernateException {
         try {
-            if(applicationContext!= null && (config instanceof AnnotationConfiguration)) {
-                Collection entityBeans = new ArrayList(applicationContext.getBeansWithAnnotation(Entity.class).values());
-                if(applicationContext.getParent()!=null) {
-                    entityBeans.addAll(applicationContext.getParent().getBeansWithAnnotation(Entity.class).values());
-                }
-                AnnotationConfiguration ac = (AnnotationConfiguration) config;
-                for (Object entityBean : entityBeans) {
-                    ac.addAnnotatedClass(entityBean.getClass());    
-                }
-            }
             return super.newSessionFactory(config);
         }
         catch (HibernateException e) {

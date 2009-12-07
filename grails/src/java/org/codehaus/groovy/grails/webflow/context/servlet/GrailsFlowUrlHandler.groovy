@@ -68,7 +68,25 @@ class GrailsFlowUrlHandler extends DefaultFlowUrlHandler implements ApplicationC
 
 	    String actionName = flowId.substring(flowId.lastIndexOf('/')+1);
 
-        return creator.createURL(controllerName, actionName, newParams, 'utf-8')
+        String url = creator.createURL(controllerName, actionName, newParams, 'utf-8')
+        return getValidFlowURL(request, url, flowExecutionKey)
+    }
+
+    private getValidFlowURL(HttpServletRequest request, String url, String flowExecutionKey=null) {
+        if ("GET" != request.method) {
+            url = trimParams(url)
+            return flowExecutionKey ? "$url?execution=$flowExecutionKey" : url
+        }
+        else {
+            return url
+        }
+    }
+
+    String trimParams(String url) {
+        if (url.contains('?')) {
+            url = url[0..url.indexOf('?') - 1]
+        }
+        return url
     }
 
     public String createFlowDefinitionUrl(String flowId, AttributeMap input, HttpServletRequest request) {
@@ -91,7 +109,8 @@ class GrailsFlowUrlHandler extends DefaultFlowUrlHandler implements ApplicationC
 
 	    String actionName = flowId.substring(flowId.lastIndexOf('/')+1);
 
-        return creator.createURL(controllerName, actionName, newParams, 'utf-8')
+        String url = creator.createURL(controllerName, actionName, newParams, 'utf-8')
+        return getValidFlowURL(request, url)
     }
 
 }

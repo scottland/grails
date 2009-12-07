@@ -20,6 +20,7 @@ import org.codehaus.groovy.grails.commons.AbstractGrailsClass;
 import org.codehaus.groovy.grails.commons.ExternalGrailsDomainClass;
 import org.codehaus.groovy.grails.commons.GrailsDomainClassProperty;
 import org.codehaus.groovy.grails.commons.GrailsDomainConfigurationUtil;
+import org.codehaus.groovy.grails.exceptions.InvalidPropertyException;
 import org.codehaus.groovy.grails.validation.GrailsDomainClassValidator;
 import org.hibernate.EntityMode;
 import org.hibernate.MappingException;
@@ -29,6 +30,8 @@ import org.hibernate.metadata.ClassMetadata;
 import org.hibernate.type.AnyType;
 import org.hibernate.type.AssociationType;
 import org.hibernate.type.Type;
+import org.springframework.core.type.AnnotationMetadata;
+import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.validation.Validator;
 
 import java.util.*;
@@ -50,6 +53,7 @@ public class GrailsHibernateDomainClass extends AbstractGrailsClass implements E
     private static final String HIBERNATE = "hibernate";
 
     private GrailsHibernateDomainClassProperty identifier;
+    private GrailsHibernateDomainClassProperty version;
 
     private GrailsDomainClassProperty[] properties;
 
@@ -58,9 +62,9 @@ public class GrailsHibernateDomainClass extends AbstractGrailsClass implements E
     private Validator validator;
 
     private Set subClasses = new HashSet();
-
     private Map constraints = Collections.EMPTY_MAP;
     private Map defaultConstraints = Collections.EMPTY_MAP;
+    private AnnotationMetadata metadata;
 
     /**
      * <p/>
@@ -76,6 +80,7 @@ public class GrailsHibernateDomainClass extends AbstractGrailsClass implements E
         super(clazz, "");
 
         // configure identity property
+        this.metadata = new StandardAnnotationMetadata(clazz);
         String ident = metaData.getIdentifierPropertyName();
         this.defaultConstraints = defaultContraints;
 
@@ -87,14 +92,23 @@ public class GrailsHibernateDomainClass extends AbstractGrailsClass implements E
             propertyMap.put(ident, identifier);
         }
 
+        // configure the version property
+        final int versionIndex = metaData.getVersionProperty();
+        String versionPropertyName = null;
+        if(versionIndex>-1) {
+            versionPropertyName = metaData.getPropertyNames()[versionIndex];
+            this.version = new GrailsHibernateDomainClassProperty(this, versionPropertyName);
+        }
+
 
         // configure remaining properties
         String[] propertyNames = metaData.getPropertyNames();
         for (String propertyName : propertyNames) {
-            if (!propertyName.equals(ident)) {
+            if (!propertyName.equals(ident) && !(versionPropertyName!=null && propertyName.equals(versionPropertyName))) {
                 GrailsHibernateDomainClassProperty prop = new GrailsHibernateDomainClassProperty(this, propertyName);
                 prop.setType(getPropertyType(propertyName));
                 Type hibernateType = metaData.getPropertyType(propertyName);
+
                 // if its an association type
                 if (hibernateType.isAssociationType()) {
                     prop.setAssociation(true);
@@ -172,15 +186,21 @@ public class GrailsHibernateDomainClass extends AbstractGrailsClass implements E
     }
 
     public GrailsDomainClassProperty getVersion() {
-        throw new UnsupportedOperationException("Method 'getVersion' is not supported by implementation");
+        return this.version;
     }
 
     public GrailsDomainClassProperty getPropertyByName(String name) {
-        return propertyMap.get(name);
+        if(this.propertyMap.containsKey(name)) {
+            return this.propertyMap.get(name);
+        }
+        else {
+            throw new InvalidPropertyException("No property found for name ["+name+"] for class ["+getClazz()+"]");
+        }
+
     }
 
     public String getFieldName(String propertyName) {
-        throw new UnsupportedOperationException("Method 'getFieldName' is not supported by implementation");
+        return getPropertyByName(propertyName).getFieldName();
     }
 
     public boolean hasSubClasses() {
@@ -213,7 +233,7 @@ public class GrailsHibernateDomainClass extends AbstractGrailsClass implements E
     }
 
     public boolean isBidirectional(String propertyName) {
-        throw new UnsupportedOperationException("Method 'isBidirectional' is not supported by implementation");
+        return false;
     }
 
     public Class getRelatedClassType(String propertyName) {
